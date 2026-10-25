@@ -1,0 +1,37 @@
+name: Atualizar dados
+
+on:
+  schedule:
+    - cron: "17 12 * * 1-5"  # dias úteis, 09:17 em Brasília
+  workflow_dispatch:          # botão "Run workflow" para rodar na hora
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - run: pytest
+
+      - name: Baixar a base publicada (carga incremental)
+        run: gh release download dados --pattern juros.db || echo "Primeira execucao - a base sera criada do zero"
+
+      - run: python pipeline.py
+
+      - name: Publicar a base atualizada
+        run: |
+          gh release view dados >/dev/null 2>&1 || \
+            gh release create dados --title "Base de dados" --notes "Atualizada automaticamente pelo GitHub Actions. O painel lê o juros.db daqui."
+          gh release upload dados juros.db --clobber
