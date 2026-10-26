@@ -38,7 +38,7 @@ st.set_page_config(page_title="Radar de Juros", page_icon="📊", layout="wide")
 
 # menos espaço vazio: o Streamlit reserva ~6rem no topo e no rodapé por padrão
 st.html("""<style>
-.block-container { padding-top: 2.5rem; padding-bottom: 2rem; }
+.block-container { padding-top: 4.5rem; padding-bottom: 2rem; }  /* 4.5rem: abaixo da barra do Streamlit Cloud */
 h1 { padding-top: 0; }
 [data-testid="stMetric"] { padding: 0.25rem 0; }
 .st-key-resumo [data-testid="stMetric"] { min-width: 140px; }
