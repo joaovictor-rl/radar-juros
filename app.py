@@ -6,7 +6,6 @@ baixa a versão mais recente publicada pelo GitHub Actions (variável DADOS_URL)
 import os
 import re
 import sqlite3
-import time
 import urllib.request
 from contextlib import closing
 from pathlib import Path
@@ -23,7 +22,6 @@ DADOS_URL = os.getenv(
     "https://github.com/joaovictor-rl/radar-juros/releases/download/dados/juros.db",
 )
 LIMITE_LINHAS = 5000
-TEMPO_MAX_CONSULTA = 5  # segundos
 
 # paleta categórica em ordem fixa (cor segue o banco, não a posição)
 CORES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
@@ -56,17 +54,9 @@ def caminho_do_banco():
     return str(destino)
 
 
-def _autorizador(acao, *_):
-    # só leitura: SELECT, leitura de colunas e funções; qualquer outra coisa é negada
-    permitidas = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION}
-    if hasattr(sqlite3, "SQLITE_RECURSIVE"):
-        permitidas.add(sqlite3.SQLITE_RECURSIVE)
-    return sqlite3.SQLITE_OK if acao in permitidas else sqlite3.SQLITE_DENY
-
-
 def conectar():
-    conexao = sqlite3.connect(f"file:{caminho_do_banco()}?mode=ro", uri=True, check_same_thread=False)
-    return conexao
+    # mode=ro abre o banco só para leitura: qualquer INSERT, UPDATE, DELETE ou DROP dá erro
+    return sqlite3.connect(f"file:{caminho_do_banco()}?mode=ro", uri=True, check_same_thread=False)
 
 
 @st.cache_data(ttl=6 * 3600)
@@ -76,17 +66,10 @@ def consultar(sql, parametros=()):
 
 
 def consulta_livre(sql):
-    conexao = conectar()
-    conexao.set_authorizer(_autorizador)
-    inicio = time.monotonic()
-    # interrompe consultas que demoram demais (ex.: produto cartesiano gigante)
-    conexao.set_progress_handler(lambda: int(time.monotonic() - inicio > TEMPO_MAX_CONSULTA), 10_000)
-    try:
+    with closing(conectar()) as conexao:
         cursor = conexao.execute(sql)
         colunas = [c[0] for c in cursor.description or []]
         linhas = cursor.fetchmany(LIMITE_LINHAS + 1)
-    finally:
-        conexao.close()
     cortado = len(linhas) > LIMITE_LINHAS
     return pd.DataFrame(linhas[:LIMITE_LINHAS], columns=colunas), cortado
 
@@ -193,11 +176,14 @@ with aba_ranking:
             m3.metric("Mediana", pct(mediana))
             m4.metric("Mais caro ÷ mais barato", f"{maior / menor:.1f}×".replace(".", ",") if menor > 0 else "—")
             st.caption(f"Mais barato: **{df.iloc[0].banco}**  \nMais caro: **{df.iloc[-1].banco}**  \n{len(df)} bancos informaram · taxas ao mês")
-            st.dataframe(
-                df[["posicao", "banco", "taxa_mes", "taxa_ano"]].rename(columns={
-                    "posicao": "#", "banco": "Banco", "taxa_mes": "% a.m.", "taxa_ano": "% a.a."}),
-                hide_index=True, width="stretch", height=min(420, 35 * len(df) + 38),
-            )
+            # tabela simples (st.table), sem os menus de ordenar/formatar do st.dataframe
+            tabela = pd.DataFrame({
+                "#": df.posicao.astype(int),
+                "Banco": df.banco,
+                "%\u00a0a.m.": df.taxa_mes.map(lambda v: f"{v:.2f}".replace(".", ",")),
+                "%\u00a0a.a.": df.taxa_ano.map(lambda v: f"{v:.2f}".replace(".", ",")),
+            })
+            st.table(tabela, hide_index=True, border="horizontal", height=420 if len(df) > 11 else "content")
 
         with grafico:
             todos = st.toggle(f"Mostrar todos os {len(df)} bancos", value=len(df) <= 25, key="todos_rk")
@@ -339,7 +325,7 @@ if arquivo_sql.exists():
 with aba_sql:
     st.subheader("Escreva sua própria consulta")
     st.caption(
-        f"Banco SQLite somente leitura. Só `SELECT`; até {LIMITE_LINHAS:,} linhas e {TEMPO_MAX_CONSULTA} s por consulta.".replace(",", ".")
+        f"Banco SQLite somente leitura: só consultas `SELECT`, mostrando até {LIMITE_LINHAS:,} linhas.".replace(",", ".")
     )
     with st.expander("Tabelas e colunas"):
         st.markdown(
@@ -359,10 +345,8 @@ with aba_sql:
             resultado, cortado = consulta_livre(sql)
         except sqlite3.DatabaseError as erro:
             mensagem = str(erro)
-            if "not authorized" in mensagem:
-                mensagem = "aqui só são permitidas consultas de leitura (SELECT)."
-            elif "interrupted" in mensagem:
-                mensagem = f"a consulta passou de {TEMPO_MAX_CONSULTA} segundos. Tente filtrar mais ou usar LIMIT."
+            if "readonly" in mensagem:
+                mensagem = "o banco é somente leitura, então só consultas SELECT funcionam aqui."
             elif "one statement" in mensagem:
                 mensagem = "rode uma consulta por vez (sem vários comandos separados por ';')."
             st.error(f"Não deu para rodar essa consulta: {mensagem}")
