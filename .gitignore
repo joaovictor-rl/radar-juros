@@ -1,5 +1,6 @@
 .env
 juros.db
+taxas.db
 .venv/
 __pycache__/
 .pytest_cache/
