@@ -1,4 +1,6 @@
 import json
+
+import pandas as pd
 from datetime import datetime
 
 from sqlalchemy import (
@@ -154,3 +156,21 @@ def salvar_descartes(engine, execucao_id, descartados):
     ]
     with engine.begin() as conexao:
         conexao.execute(insert(descartes), linhas)
+
+
+def exportar_csv(engine, caminho):
+    consulta = (
+        select(
+            taxas.c.inicio_periodo, taxas.c.fim_periodo, instituicoes.c.nome.label("banco"), taxas.c.cnpj8,
+            modalidades.c.segmento, modalidades.c.modalidade, taxas.c.posicao, taxas.c.taxa_mes, taxas.c.taxa_ano,
+        )
+        .join(instituicoes, instituicoes.c.cnpj8 == taxas.c.cnpj8)
+        .join(modalidades, (modalidades.c.codigo_segmento == taxas.c.codigo_segmento)
+              & (modalidades.c.codigo_modalidade == taxas.c.codigo_modalidade))
+        .order_by(taxas.c.inicio_periodo, modalidades.c.modalidade, taxas.c.posicao)
+    )
+    with engine.connect() as conexao:
+        tabela = pd.read_sql(consulta, conexao)
+    # formato brasileiro (";" e vírgula decimal) para o Power BI em português ler os números certo
+    tabela.to_csv(caminho, sep=";", decimal=",", index=False, encoding="utf-8-sig")
+    return len(tabela)

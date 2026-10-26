@@ -33,5 +33,5 @@ jobs:
       - name: Publicar a base atualizada
         run: |
           gh release view dados >/dev/null 2>&1 || \
-            gh release create dados --title "Base de dados" --notes "Atualizada automaticamente pelo GitHub Actions. O painel lê o juros.db daqui."
-          gh release upload dados juros.db --clobber
+            gh release create dados --title "Base de dados" --notes "Atualizada automaticamente pelo GitHub Actions. O juros.db é o banco completo e o taxas.csv é a base usada no Power BI."
+          gh release upload dados juros.db taxas.csv --clobber

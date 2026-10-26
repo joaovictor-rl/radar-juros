@@ -3,3 +3,4 @@ juros.db
 .venv/
 __pycache__/
 .pytest_cache/
+taxas.csv

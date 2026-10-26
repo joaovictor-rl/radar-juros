@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 from src.extract import buscar_parametros, buscar_taxas
-from src.load import carregar, criar_tabelas, finalizar_execucao, iniciar_execucao, salvar_descartes, ultima_data
+from src.load import carregar, criar_tabelas, exportar_csv, finalizar_execucao, iniciar_execucao, salvar_descartes, ultima_data
 from src.transform import transformar
 
 
@@ -50,6 +50,7 @@ def main():
         for motivo, quantidade in descartados["motivo_descarte"].value_counts().items():
             print(f"  - {motivo}: {quantidade}")
     print(f"Linhas novas no banco: {novas}")
+    print(f"CSV para o Power BI: {exportar_csv(engine, 'taxas.csv')} linhas em taxas.csv")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ cd /d "%~dp0"
 rem Uso: rodar.bat            (carga normal/incremental)
 rem      rodar.bat --desde 2026-01-01
 rem      rodar.bat testes     (roda os testes)
-rem      rodar.bat painel     (abre o painel no navegador)
 
 set "PY=.venv\Scripts\python.exe"
 
@@ -31,16 +30,6 @@ if errorlevel 1 (
 
 if /i "%~1"=="testes" (
     "%PY%" -m pytest
-) else if /i "%~1"=="painel" (
-    if not exist juros.db "%PY%" pipeline.py || goto erro
-    rem evita a pergunta de e-mail que o Streamlit faz na primeira execucao
-    if not exist "%USERPROFILE%\.streamlit\credentials.toml" (
-        if not exist "%USERPROFILE%\.streamlit" mkdir "%USERPROFILE%\.streamlit"
-        > "%USERPROFILE%\.streamlit\credentials.toml" echo [general]
-        >> "%USERPROFILE%\.streamlit\credentials.toml" echo email = ""
-    )
-    echo Abrindo o painel em http://localhost:8501 ^(feche esta janela ou aperte Ctrl+C para parar^)
-    "%PY%" -m streamlit run app.py
 ) else (
     "%PY%" pipeline.py %*
 )
