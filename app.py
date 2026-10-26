@@ -132,29 +132,7 @@ periodos = consultar("SELECT DISTINCT inicio_periodo, fim_periodo FROM taxas ORD
 resumo = consultar("SELECT COUNT(*) AS linhas, COUNT(DISTINCT cnpj8) AS bancos FROM taxas").iloc[0]
 ultimo = periodos.iloc[0]
 
-def trocar_tema():
-    # o Streamlit guarda o tema escolhido no navegador de cada visitante (localStorage);
-    # gravamos lá o tema oposto e recarregamos a página. Só afeta quem clicou.
-    novo = "Light" if st.context.theme.type == "dark" else "Dark"
-    st.html(
-        f"""<script>
-        localStorage.setItem(`stActiveTheme-${{location.pathname}}-v2`, JSON.stringify("{novo}"));
-        location.reload();
-        </script>""",
-        unsafe_allow_javascript=True,
-    )
-
-
-# container horizontal sem quebra: no celular a lâmpada continua ao lado do título
-cabecalho = st.container(horizontal=True, wrap=False, horizontal_alignment="distribute", vertical_alignment="center")
-cabecalho.title("Radar de Juros")
-botao = cabecalho
-escuro = st.context.theme.type == "dark"
-if botao.button(
-    "", icon=":material/lightbulb:", type="tertiary", key="tema",
-    help="Mudar para o tema claro" if escuro else "Mudar para o tema escuro",
-):
-    trocar_tema()
+st.title("Radar de Juros")
 st.caption(
     "Taxas de juros cobradas por cada banco no Brasil, por tipo de crédito. "
     "Fonte: [Banco Central — dados abertos](https://dadosabertos.bcb.gov.br/dataset/taxas-de-juros-de-operacoes-de-credito). "
